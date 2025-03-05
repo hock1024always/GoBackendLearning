@@ -12,5 +12,5 @@
 
 ### RPC概念模型
 
-![image-20250305103610951](C:\Users\BuBu\Desktop./字节青训营笔记/图片/框架/初始框架.png)
+![image-20250305103610951](https://github.com/hock1024always/ByteDance_Backend/blob/main/%E5%9B%BE%E7%89%87/%E6%A1%86%E6%9E%B6/%E5%88%9D%E5%A7%8B%E6%A1%86%E6%9E%B6.png)
 
