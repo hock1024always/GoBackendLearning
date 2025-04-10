@@ -119,6 +119,7 @@
 68. shutdown 
     - `sudo shutdown`一分钟后关机
     - `sudo shut -h now`直接关机
+69. nohup `nohup ./myapp &` 持久化运行一个可执行程序
 
 ## 写在后面
 
