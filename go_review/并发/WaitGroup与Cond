@@ -1,0 +1,336 @@
+# `Sync.WaitGroup`
+
+将并发的异步操作变成同步操作
+
+## 作用
+
+1. 等待一组协程完成
+2. 工作原理：通过计数器来获取协程的完成情况
+   - 启动一个协程时计数器+1，关闭一个协程时计数器-1
+3. 通过wait方法阻塞主协程，等待计数器清零后才能执行后续操作
+
+## 应用场景
+
+通过协程**并行执行**一组任务，且任务**全部完成后**才能进行下一步操作的情况
+
+例如: 汽车的生成，所有零件可以并行生产，只能等所有零件生成完成后，才能组装
+
+## `sync.WoitGroup`陷阱
+
+协程间传通时需要以指针的方式或闭包的方式引用 `WaitGroup` 对象。否则将会造成死锁
+
+## 案例
+
+### 计数器的使用
+
+在这个案例中，我们开辟了20个协程来进行函数的处理一项任务
+
+```go
+func WaitGroupCase() {
+	var a, b = 1000, 100000
+	start := time.Now()
+	for i := 0; i < 10000000000; i++ {
+		multi(a, b)
+	}
+	t := time.Since(start)
+	fmt.Println(t)
+
+	start = time.Now()
+	wg := sync.WaitGroup{}
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 500000000; j++ {
+				multi(a, b)
+			}
+		}()
+	}
+	wg.Wait()
+	t = time.Since(start)
+	fmt.Println(t)
+}
+
+func multi(a, b int) int {
+	return a + b
+}
+```
+
+1. `wg := sync.WaitGroup{}`声明一个等待组对象，用于后续操作
+2. `wg.Add(1)`，会将 `WaitGroup` 的内部计数器 **+1**，表示有一个新的协程需要等待，所以这个一般是加在go关键字启动的协程外面的
+3. `wg.Done()`协程完成后，需要通过 `defer wg.Done()` 将计数器 **-1**（等价于 `wg.Add(-1)`），所以这个一般是加在go协程里面的
+
+### 使用范围
+
+```go
+func WaitGroupCase1() {
+	ch := make(chan []int, 1000)
+	start := time.Now()
+
+	go func() {
+		i := 0
+		for item := range ch {
+			fmt.Println(multi(item[0], item[1]))
+			i++
+		}
+		time.Sleep(3 * time.Second)
+		fmt.Println("数据处理完成，数据条数:1O ", i)
+	}()
+
+	wg := &sync.WaitGroup{}
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func(wg1 *sync.WaitGroup) {
+			defer wg1.Done()
+			for j := 0; j < 500; j++ {
+				ch <- []int{i, j}
+			}
+		}(wg)
+		wg.Wait()
+	}
+	close(ch) // 关闭通道
+	t := time.Since(start)
+	fmt.Println(t)
+}
+```
+
+在这个案例中，主协程在消费者协程还没有执行完的时候就回退出，原因是因为：
+
+1. `close(ch) // 关闭通道`在生产完之后就回关闭通道，这时候消费者进程就不能再接收到数据了
+2. 哪怕是注释掉`close(ch) // 关闭通道`，在主进程执行完之后，`WaitGroupCase1`也会结束，并且跳转回main函数然后结束
+
+为了解决这个问题，我们使用了如下的方式：
+
+#### 使用等待方法
+
+```go
+func main() {
+	//WaitGroupCase()
+	WaitGroupCase1()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Kill, os.Interrupt)
+	defer stop()
+	<-ctx.Done()
+}
+```
+
+1. **`signal.NotifyContext`**
+   - 创建一个监听 `os.Interrupt`（`Ctrl+C`）和 `os.Kill`（`kill` 命令）的 `Context`。
+   - 当收到这些信号时，`ctx.Done()` 会返回一个关闭的 channel，解除 `<-ctx.Done()` 的阻塞。
+2. **`defer stop()`**
+   - 确保在程序退出前，停止信号监听，避免资源泄漏。
+3. **`<-ctx.Done()`**
+   - **阻塞主协程**，直到收到 `Ctrl+C` 或 `kill` 信号才会继续执行（即程序退出）。
+
+#### 将主协程纳入等待
+
+```go
+func WaitGroupCase1() {
+	ch := make(chan []int, 1000)
+	start := time.Now()
+	wg2 := &sync.WaitGroup{}
+	wg2.Add(1)
+	go func(wg2 *sync.WaitGroup) {
+		defer wg2.Done()
+		i := 0
+		for item := range ch {
+			fmt.Println(multi(item[0], item[1]))
+			i++
+		}
+		time.Sleep(3 * time.Second)
+		fmt.Println("消费者协程完成 ", i)
+	}(wg2)
+
+	wg := &sync.WaitGroup{}
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func(wg1 *sync.WaitGroup) {
+			defer wg1.Done()
+			for j := 0; j < 500; j++ {
+				ch <- []int{i, j}
+			}
+
+		}(wg)
+		wg.Wait()
+	}
+	close(ch)  // 关闭通道
+	wg2.Wait() // 等待消费者协程完成
+	t := time.Since(start)
+	fmt.Println("主协程退出,花费时间", t)
+}
+```
+
+### 死锁
+
+```go
+func WaitGroupCase1() {
+	ch := make(chan []int, 1000)
+	start := time.Now()
+	wg2 := &sync.WaitGroup{}
+	wg2.Add(1)
+	go func(wg2 *sync.WaitGroup) {
+		defer wg2.Done()
+		i := 0
+		for item := range ch {
+			fmt.Println(multi(item[0], item[1]))
+			i++
+		}
+		time.Sleep(3 * time.Second)
+		fmt.Println("消费者协程完成 ", i)
+	}(wg2)
+	wg2.Wait()
+
+	wg := &sync.WaitGroup{}
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func(wg1 *sync.WaitGroup) {
+			defer wg1.Done()
+			for j := 0; j < 500; j++ {
+				ch <- []int{i, j}
+			}
+
+		}(wg)
+		wg.Wait()
+	}
+	close(ch) // 关闭通道
+	t := time.Since(start)
+	fmt.Println("主协程退出,花费时间", t)
+}
+```
+
+如果消费者进程进行上述修改，就回发生死锁现象
+
+1. 消费者进程需要等待channel中数据发过来才能进行，
+2. 而`waitgroup`对象需要等待消费者进程完整之后才能继续主进程，主进程下面的写进程才能写如信道
+
+死锁就是当资源获取者持有锁，导致资源发送者无法发送因其的
+
+# `sync.Cond`
+
+## 作用
+
+1. 设置一组协程根拟条件阻塞，可以根据不同的条件阻塞
+2. 可以根据条件唤醒相对应的协程
+
+## 应用场景 
+
+应用于一发多收的场景，即一组协程需要等待某一个协程完成一些前置准备的情况
+
+## 注意事项
+
+1. 被叫方必须持有镇
+2. 主叫方可以持有镇，但允许不持有
+3. 尽可能的减少无效唤醒
+
+## 案例
+
+### 基础的等待与唤醒
+
+1. `c.L.Lock()` 是获取条件变量关联的互斥锁，等待wait方法触发。唤醒方可以不持有锁（但通常建议持有，避免竞态），被唤醒方一定要持有锁，写法就是`c.L.Lock()   defer c.L.Unlock()`，`Wait()` 会在内部**临时释放锁**，被唤醒后**重新获取锁**
+2. `c.Wait()` 会**原子性地释放锁**并挂起当前协程，直到被 `Broadcast()` 或 `Signal()` 唤醒；被唤醒后，`Wait()` 会**重新获取锁**，然后继续执行后续代码；**必须**在循环中检查条件（如 `for len(*list) == 0`），因为可能存在**虚假唤醒**（spurious wakeup）
+3. 唤醒有下面两种`c.Broadcast()`是唤醒所有等待的进程进程，`c.Signal()`是唤醒一个进程
+
+```go
+func CondCase() {
+	list := make([]int, 0)
+	cond := sync.NewCond(&sync.Mutex{})
+	go readList(&list, cond)
+	go readList(&list, cond)
+	go readList(&list, cond)
+	time.Sleep(1 * time.Second)
+	initList(&list, cond)
+}
+
+func initList(list *[]int, c *sync.Cond) {
+	// 主叫方，可以持有锁，也可以不持锁
+	c.L.Lock()
+	defer c.L.Unlock()
+	for i := 0; i < 10; i++ {
+		*list = append(*list, i)
+	}
+	// 唤醒所有条件等待的协程
+	c.Broadcast()
+}
+
+func readList(list *[]int, c *sync.Cond) {
+	// 被叫方，必须持锁
+	c.L.Lock()
+	defer c.L.Unlock()
+	for len(*list) == 0 { // 等待条件满足
+		fmt.Println("readList wait")
+		c.Wait()
+	}
+	fmt.Println("list的数据为：", *list)
+}
+```
+
+### **基于条件变量实现的多消费者队列模式**
+
+经典生产者-消费者模式的增强实现，生产者向队列中写，每写一次就回使用signal唤醒一个消费者进程，消费者进程被唤醒之后比较看队列中的元素够不够`n`个，如果不够的话就重新进入等待状态，等待下一次唤醒
+
+1. **线程安全队列结构**
+   - 使用 `sync.Cond` 配合互斥锁实现同步
+   - 队列数据存储在切片 `list` 中，所有操作强制持锁
+2. **生产者-消费者模式**
+   - **生产者**：`Put()` (持锁写入)方法写入数据后，通过 `Signal()` 唤醒一个等待的消费者
+   - **消费者**：`GetMany(n)` （持锁检查条件）方法支持批量获取，当元素不足时自动挂起（`Wait()`）
+3. **批量获取特性**
+   - `GetMany(n)` 会阻塞直到队列中有足够 `n` 个元素
+   - 采用切片操作高效获取并移除已消费数据
+
+```go
+type queue struct {
+	list []int
+	cond *sync.Cond
+}
+
+func newQueue() *queue {
+	q := &queue{
+		list: []int{},
+		cond: sync.NewCond(&sync.Mutex{}),
+	}
+	return q
+}
+
+func (q *queue) Put(item int) {
+	q.cond.L.Lock()
+	defer q.cond.L.Unlock()
+	q.list = append(q.list, item)
+	// 当数据写入成功后，唤醒一个协程来处理数据
+	q.cond.Signal()
+}
+
+func (q *queue) GetMany(n int) []int {
+	q.cond.L.Lock()
+	defer q.cond.L.Unlock()
+	for len(q.list) < n {//读取的切片元素个数被限制
+		q.cond.Wait()
+	}
+	list := q.list[:n]
+	q.list = q.list[n:]
+	return list
+}
+
+func CondQueueCase() {
+	q := newQueue()
+	var wg sync.WaitGroup
+
+	// 启动消费者
+	for n := 1; n <= 10; n++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			list := q.GetMany(n)
+			fmt.Printf("%d: %v\n", n, list)
+		}(n)
+	}
+
+    //启动生产者
+	for i := 1; i <= 100; i++ {
+		q.Put(i)
+	}
+
+	wg.Wait()//保证生产者和消费者进程全部执行完才会结束主进程
+}
+```
+
