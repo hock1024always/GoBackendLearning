@@ -60,7 +60,7 @@ func multi(a, b int) int {
 2. `wg.Add(1)`，会将 `WaitGroup` 的内部计数器 **+1**，表示有一个新的协程需要等待，所以这个一般是加在go关键字启动的协程外面的
 3. `wg.Done()`协程完成后，需要通过 `defer wg.Done()` 将计数器 **-1**（等价于 `wg.Add(-1)`），所以这个一般是加在go协程里面的
 
-### 使用范围
+### 串行方式
 
 ```go
 func WaitGroupCase1() {
