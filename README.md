@@ -14,3 +14,124 @@
 
 ![303fbcc41cd584f57d72b13c6f9f754](./稀土掘金笔记/图片/ReadMe/学习路线.png)
 
+# 总任务
+
+1. 设计模式
+2. 项目MitRaft
+3. 项目galbot
+4. 数据结构底层
+5. 组件面经
+6. go机制与gin底层
+7. 算法题
+
+## 前置（阳）
+
+1. 并发
+2. grpc
+
+## 算法题
+
+### 格式
+
+1. 每周25题算法+10道sql
+2. 代码+口述思路（特征+代码设计思路）+语法点（可选）
+
+### 谦
+
+**算法**
+
+1. 数组（24）
+2. 双指针（5）
+3. 滑动窗口（4）
+4. 矩阵（5）
+5. 栈（5）
+6. 链表（11）
+7. 图+图的广度优先搜索（9）
+8. 堆（4）
+9. 分治（4）
+10. Kadane 算法（2）
+11. 字典树（3）
+
+**sql**
+
+1. 查询（5）
+2. 子查询（7）
+3. 高级查询和连接（7）
+4. 高级字符串函数 / 正则表达式 / 子句（7）
+
+### 阳
+
+**算法**
+
+1. 哈希表（9）
+2. 区间（4）
+3. 二叉树+二叉树层次遍历+二叉搜索树（21）
+4. 回溯（7）
+5. 二分查找（7）
+6. 位运算（6）
+7. 数学（6）
+8. 一维动态规划+多维动态规划（14）
+
+**sql**
+
+1. 连接（9）
+
+2. 排序与分组（7）
+3. 聚合函数（8）
+
+## 项目（阳）
+
+### MIT6.824（26h）
+
+1. 两周（每周10节）
+
+### galbot（一周）
+
+## 设计模式（阳）
+
+1. 24种：[4小时了解Go语言24种设计模式|go设计模式_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1jyreYKE8z/?spm_id_from=333.337.search-card.all.click&vd_source=ec6316a581a37a9f967c180fffa5f8b5)
+2. 大话设计模式
+
+## 数据结构实现（阳）
+
+使用go实现一下基本的数据结构
+
+## 底层（谦）
+
+### 数据结构底层
+
+![image-20250728204036740](./稀土掘金笔记/图片/ReadMe/数据结构底层.png)
+
+### 计网、计组与os
+
+![image-20250728204154361](./稀土掘金笔记/图片/ReadMe/计算机基础.png)
+
+### 组件面经
+
+![image-20250728204251404](./稀土掘金笔记/图片/ReadMe/组件面经.png)
+
+### 第三方库
+
+#### 标准库
+
+![image-20250728204547635](./稀土掘金笔记/图片/ReadMe/标准库.png)
+
+#### Web第三方库
+
+![image-20250728204423699](./稀土掘金笔记/图片/ReadMe/web相关第三方库.png)
+
+#### 微服务第三方库
+
+![image-20250728204447340](./稀土掘金笔记/图片/ReadMe/微服务相关第三方库.png)
+
+### go机制与gin底层
+
+1. gin底层：[gin框架底层技术原理剖析_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1zm4y177mb/?spm_id_from=333.1387.search.video_card.click&vd_source=ec6316a581a37a9f967c180fffa5f8b5)
+2. gc：
+   - [Go语言GC系列下篇——垃圾回收原理分析&源码走读_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1xu4y1w7gL/?spm_id_from=333.1387.upload.video_card.click&vd_source=ec6316a581a37a9f967c180fffa5f8b5)
+   - [Go语言GC系列上篇——内存分配与管理机制_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1bv411c7bp/?spm_id_from=333.1387.upload.video_card.click&vd_source=ec6316a581a37a9f967c180fffa5f8b5)
+3. gmp：[解说Golang GMP 实现原理_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1oT411Y7m3/?spm_id_from=333.1387.search.video_card.click&vd_source=ec6316a581a37a9f967c180fffa5f8b5)
+
+### bilibili面经
+
+linux技术大师百题
