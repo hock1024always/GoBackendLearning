@@ -26,6 +26,8 @@
 
 ## 前置（阳）
 
+7.29-7.31
+
 1. 并发
 2. grpc
 
@@ -83,16 +85,25 @@
 
 ### MIT6.824（26h）
 
+8.8之前，8.9-8.10讨论
+
 1. 两周（每周10节）
+1. 每一节的笔记
 
 ### galbot（一周）
 
+8.11-8.15
+
 ## 设计模式（阳）
+
+8.18-8.22
 
 1. 24种：[4小时了解Go语言24种设计模式|go设计模式_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1jyreYKE8z/?spm_id_from=333.337.search-card.all.click&vd_source=ec6316a581a37a9f967c180fffa5f8b5)
 2. 大话设计模式
 
 ## 数据结构实现（阳）
+
+8.18-8.22
 
 使用go实现一下基本的数据结构
 
@@ -100,13 +111,19 @@
 
 ### 数据结构底层
 
+8.9-8.15
+
 ![image-20250728204036740](./稀土掘金笔记/图片/ReadMe/数据结构底层.png)
 
 ### 计网、计组与os
 
+7.29-8.8
+
 ![image-20250728204154361](./稀土掘金笔记/图片/ReadMe/计算机基础.png)
 
 ### 组件面经
+
+8.16-8.22
 
 ![image-20250728204251404](./稀土掘金笔记/图片/ReadMe/组件面经.png)
 
@@ -126,6 +143,8 @@
 
 ### go机制与gin底层
 
+8.23-8.30
+
 1. gin底层：[gin框架底层技术原理剖析_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1zm4y177mb/?spm_id_from=333.1387.search.video_card.click&vd_source=ec6316a581a37a9f967c180fffa5f8b5)
 2. gc：
    - [Go语言GC系列下篇——垃圾回收原理分析&源码走读_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1xu4y1w7gL/?spm_id_from=333.1387.upload.video_card.click&vd_source=ec6316a581a37a9f967c180fffa5f8b5)
@@ -133,5 +152,7 @@
 3. gmp：[解说Golang GMP 实现原理_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1oT411Y7m3/?spm_id_from=333.1387.search.video_card.click&vd_source=ec6316a581a37a9f967c180fffa5f8b5)
 
 ### bilibili面经
+
+8.23-8.30
 
 linux技术大师百题
