@@ -2,7 +2,7 @@
 
 ## Map是什么
 
-引用型数据结构、字典、k/v键值对
+引用型数据结构、字典、k/v键值对、哈希表（使用的算法）、散列表（哈希对于数据的改变性质）
 
 ## Map的应用场景有哪些
 
@@ -14,14 +14,50 @@
 
 ## Map有哪些限制
 
-1. 无序性（哈希计算、扩容导致的），与其在底层进行有序维护，不如在高层去做
-2. 非线程安全的读写（读读安全、读写 写写不安全），有sync.Map
+1. 无序性（哈希计算、扩容导致的），与其在底层进行有序维护，不如在高层去做（这就是说range的时候打印出来的是随机的）
+2. 有sync.Map（主要是底层的flags字段进行的标记），非线程安全的读写
+   - 并发读没有问题；
+   - 并发读写中的“写”是广义上的，包含写入、更新、删除等操作；
+   - 读的时候发现其他 goroutine 在并发写，抛出 fatal error；
+   - 写的时候发现其他 goroutine 在并发写，抛出 fatal error. （并发读写会引发 fatal error，是一种比 panic 更严重的错误，无法使用 recover 操作捕获）
+3. map 中，key 的数据类型必须为可比较的类型，chan、map、func不可比较
 
-## Map通过key的访问
+## Map的使用
+
+### 初始化
+
+1. 对 map 的初始化分为以下几种方式：`myMap1 := make(map[int]int,2)`
+
+2. 通过 make 关键字进行初始化，同时指定 map 预分配的容量`myMap2 := make(map[int]int)`
+
+3. 通过 make 关键字进行初始化，不显式声明容量，因此默认容量 为 0，初始化操作连带赋值，一气呵成.
+
+```go
+myMap3 :=map[int]int{
+  1:2,
+  3:4,
+}
+```
+
+### 读取
 
 1. `v:=mp[key]`
 2. `v,ok:=mp[key]`
-3. `for k,v := range map`
+3. `for k,v := range map` 再强调一下无序性，就是打印出来是随机的
+4. `for k,v := range myMap` 这样写也是
+
+### 写入
+
+1. 直接写一个元素`myMap[5] = 6`，须注意的一点是，倘若 map **未初始化**，直接执行写操作会导致 panic：
+
+```go
+const plainError string
+panic(plainError("assignment to entry in nil map"))
+```
+
+### 删除
+
+`delete(myMap,5)` 执行 delete 方法时，倘若 key 存在，则会从 map 中将对应的 key-value 对删除；倘若 key 不存在或 map 未初始化，则方法直接结束，不会产生显式提示.
 
 ## 哈希表的扩容方式
 
@@ -51,6 +87,11 @@
 ## `hmap` (map的数据结构)
 
 ![溢出桶数据结构](./图片/溢出桶数据结构.png)
+
+### 桶结构
+
+1. 每个桶固定可以存放 8 个 key-value 对；
+2. 倘若超过 8 个 key-value 对打到桶数组的同一个索引当中，此时会通过创建桶链表的方式来化解这一问题.
 
 ```go
 type hmap struct {
