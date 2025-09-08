@@ -78,6 +78,8 @@ panic(plainError("assignment to entry in nil map"))
 
 # 底层数据结构
 
+![img](./图片/Map数据结构示意图.jpg)
+
 ## bmap的数据结构
 
 ![bmap数据结构](./图片/bmap数据结构.png)

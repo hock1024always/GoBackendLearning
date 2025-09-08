@@ -1,0 +1,463 @@
+# 命令表
+
+```cmd
+C:\Users\BuBu>django-admin
+
+Type 'django-admin help <subcommand>' for help on a specific subcommand.
+
+Available subcommands:
+
+[django]
+    check //校验项目的完整性
+    compilemessages
+    createcachetable
+    dbshell
+    diffsettings
+    dumpdata// 把数据库数据导出到文件
+    flush
+    inspectdb
+    loaddata //把文件数据导出到数据库
+    makemessages
+    makemigrations //创建模型变更的迁移文件
+    migrate //执行上一个命令创建的迁移文件
+    optimizemigration
+    runserver //进入django的环境并且运行简易项目
+    sendtestemail
+    shell //进入python shell
+    showmigrations
+    sqlflush
+    sqlmigrate
+    sqlsequencereset
+    squashmigrations
+    startapp //创建一个django的应用
+    startproject //创建一个django项目
+    test //跑单元测试用例
+    testserver
+Note that only Django core commands are listed as settings are not properly configured (error: Requested setting INSTALLED_APPS, but settings are not configured. You must either define the environment variable DJANGO_SETTINGS_MODULE or call settings.configure() before accessing settings.).
+```
+
+## 项目基础相关
+
+```cmd
+startapp //创建一个django的应用
+startproject //创建一个django项目
+test //跑单元测试用例
+runserver //进入django的环境并且运行简易项目
+shell //进入python shell
+check //校验项目的完整性
+```
+
+## 数据库相关
+
+```cmd
+makemigrations //创建模型变更的迁移文件
+migrate //执行上一个命令创建的迁移文件
+dumpdata //把数据库数据导出到文件
+loaddata //把文件数据导出到数据库
+```
+
+如果说数据库是楼房，模型是图纸，迁移文件就是施工方案。迁移文件是由 Django **自动生成**的一系列 Python 文件，记录了**如何对现有的数据库进行更改**，才能让它匹配你的模型设计。
+
+# Django介绍
+
+## Django项目
+
+### 基础文件
+
+1. `_init_py`: 内容通常是空的。它唯一的作用就是告诉Python：“这个`djangoProgram`目录不是一个普通的文件夹，而是一个**Python包**，所以你可以从里面导入模块（import）”。基本不用管它。
+2. `manage.py`: 是一个命令行工具，你以后几乎所有的操作（启动服务器、创建应用、数据库迁移）都要通过它来发号施令
+3. `settings.py`: 整个项目**最重要的配置文件**，所有全局设置都在这里。
+4. `urls.py`: 决定了**用户访问哪个网址，会看到什么内容**
+5. ****`wsgi.py` 和 `asgi.py`: **把你的网站部署到线上服务器**（比如阿里云、腾讯云）时用的。它们是你的项目与Web服务器（如Nginx, Apache）之间的沟通桥梁
+   - **WSGI** 是处理传统Web请求的标准。
+   - **ASGI** 更先进，可以处理像WebSocket这样的实时连接（比如聊天功能）。
+
+### 使用命令创建一个Django项目
+
+这部分可以用IDE直接创建
+
+1. `django-admin startproject django_introduction`  创建新手项目
+2. `python manage.py runserver` 将项目运行起来
+
+![image-20250902153244873](./初始项目的运行界面.png)
+
+## Django应用
+
+### Django应用(App)与Django项目的区别
+
+1. 实质
+
+   - 一个Django项目是一个基于Django框架的Web应用
+
+   - 一个Django应用是一个可重用的Python软件包
+
+2. 所含代码
+
+   - 每个应用可以自己管理模型、视图、模板、路由和静态文件等等
+   - 一个Django应用包含一组配置和**若干个Django应用**
+
+![image-20250902160433174](./项目VS应用.png)
+
+注意，如图所示，一个APP可以包含在不同的项目中
+
+### 使用命令行构建一个Django APP
+
+1. `python manage.py startapp my_app`: 创建一个APP，此后会产生一个新的项目文件夹
+
+![image-20250903085631010](./APP项目结构.png)
+
+2. 文件结构：
+   - `views.py` 视图处理的地方
+   - `models.py` 定义应用模型的地方
+   - `admin.py` 定义Admin模块管理对象的地方
+   - `apps.py` 声明应用的地方
+   - `tests.py` 编写应用测试用例的地方
+   - `urls.py` （自行创建）管理应用路由的地方
+
+## `Django Helloworld`
+
+### `Django视图`
+
+通过编写Django视图，展示出页面效果
+
+```python
+from django.shortcuts import render
+from django.http import HttpResponse
+
+# Create your views here.
+def hello_world(request):
+    return HttpResponse("Hello World!")
+```
+
+### `Django路由` 
+
+通过配置来绑定视图函数和URL
+
+1. 在APP中新建一个urls.py文件
+
+   ```python
+   from django.urls import path, include
+   
+   import my_app.views
+   
+   urlpatterns = [
+       path('hello_world',my_app.views.hello_world),
+   ]
+   ```
+
+2. 在默认程序中的urls.py文件引入
+
+   ```python
+   from django.contrib import admin
+   from django.urls import path, include
+   
+   urlpatterns = [
+       path('admin/', admin.site.urls),
+       path('blog/', include('my_app.urls'))
+   ]
+   ```
+
+3. 在默认程序的setting.py中添加APP名称字段
+
+   ```python
+   INSTALLED_APPS = [
+       'django.contrib.admin',
+       'django.contrib.auth',
+       'django.contrib.contenttypes',
+       'django.contrib.sessions',
+       'django.contrib.messages',
+       'django.contrib.staticfiles',
+   
+       # 个人添加
+       'my_app.apps.MyAppConfig',
+   ]
+   ```
+
+4. 使用`python manage.py runserver` 运行项目
+
+### 代码执行流程
+
+![image-20250903120857092](./代码执行流程.png)
+
+# 模型层
+
+## 模型层是什么
+
+1. 模型层位于视图层和数据库(层)之间
+2. 把Python对象转化成数据库表，将数据库中的记录转化成Python的对象数据进行返回
+
+## 为什么需要模型层
+
+1. 屏蔽不同数据库之间的差异
+2. 解耦，更加专注于业务逻辑的开发
+
+## 模型层的相关配置
+
+```python
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3', #数据库驱动
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+```
+
+## 创建模型
+
+我们以博客为例子
+
+### 设计博客模型
+
+1. 文章标题--文本类型--`IntegerField`
+2. 文章摘要--文本类型--`IntegerField`
+3. 文章内容--文本类型--`IntegerField`
+4. 唯一ID标记--Int数字类型（自增 主键）--`TextField`
+   - 自增ID--`AutoField`
+   - 主键定义--`primary_key`属性
+5. 发布日期--日期类型--`DataTimeField`
+
+### 创建博客模型
+
+定义一下Django某个数据库表的字段
+
+```python
+from django.db import models
+
+# Create your models here.
+class Article(models.Model):
+    # 文章的唯一ID
+    article_id = models.AutoField(primary_key=True)
+    # 文章标题
+    title = models.CharField()
+    # 文章摘要
+    brief_content = models.TextField()
+    # 文章内容
+    content = models.TextField()
+    # 文章发布日期
+    publish_date = models.DateTimeField(auto_now=True)
+```
+
+### 迁移博客模型
+
+这一步就是将模型转化成数据库内容，输入执行下面命令：
+
+1. `python manage.py makemigrations` 创建迁移文件
+
+   ```cmd
+   (.venv) PS D:\python\djangoProgram> python manage.py makemigrations
+   Migrations for 'my_app':
+     my_app\migrations\0001_initial.py
+       + Create model Article
+   ```
+
+2. `python manage.py migrate` 迁移数据库
+
+   ```cmd
+   (.venv) PS D:\python\djangoProgram> python manage.py migrate
+   Operations to perform:
+     Apply all migrations: admin, auth, contenttypes, my_app, sessions
+   Running migrations:
+     Applying contenttypes.0001_initial... OK
+     Applying auth.0001_initial... OK
+     Applying admin.0001_initial... OK
+     Applying admin.0002_logentry_remove_auto_add... OK
+     Applying admin.0003_logentry_add_action_flag_choices... OK
+     Applying contenttypes.0002_remove_content_type_name... OK
+     Applying auth.0002_alter_permission_name_max_length... OK
+     Applying auth.0003_alter_user_email_max_length... OK
+     Applying auth.0004_alter_user_username_opts... OK
+     Applying auth.0005_alter_user_last_login_null... OK
+     Applying auth.0006_require_contenttypes_0002... OK
+     Applying auth.0007_alter_validators_add_error_messages... OK
+     Applying auth.0008_alter_user_username_max_length... OK
+     Applying auth.0009_alter_user_last_name_max_length... OK
+     Applying auth.0010_alter_group_name_max_length... OK
+     Applying auth.0011_update_proxy_permissions... OK
+     Applying auth.0012_alter_user_first_name_max_length... OK
+     Applying my_app.0001_initial... OK
+     Applying sessions.0001_initial... OK
+   ```
+
+
+# Django Shell
+
+- 传统的Java，Cpp后端语言的代码开发流程：编写-->保存-->编译-->运行-->调试
+- Python支持交互式的编程方式，不需要保存编译就可以测试运行
+
+Django Shell继承了Django的项目环境，可以使用Django中的一些对象或者命令
+
+## 为什么需要
+
+1. 方便临时性操作
+2. 小范围Debug更简单，不需要运行整个项目来测试
+
+## 如何使用Django Shell
+
+1. `python manage.py shell` 进入Django Shell终端
+
+   ```cmd
+   (.venv) PS D:\python\djangoProgram> python manage.py shell
+   7 objects imported automatically (use -v 2 for details).
+   
+   Python 3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)] on win32
+   Type "help", "copyright", "credits" or "license" for more information.
+   (InteractiveConsole)
+   >>> 
+   ```
+
+2. 在Django Shell中进行创建和保存操作
+
+   ```shell
+   # 获取文章模型 创建文章对象 并且赋值
+   >>> from my_app.models import Article
+   >>> a = Article()
+   >>> a.title = "Test Django Shell"
+   >>> a.brief_content = '原神启动' 
+   >>> a.content = '我爱玩原神'   
+   # 带你对象发现不存在 需要保存
+   >>> print(a)
+   Article object (None)
+   >>> a.save()
+   # 获取文章列表 获取某个文章对象并且打印其中元素
+   >>> articles = Article.objects.all()
+   >>> article = articles[0]
+   >>> print(article.title)
+   Test Django Shell
+   >>> print(article.brief_content)
+   原神启动
+   >>> print(article.content)      
+   我爱玩原神
+   ```
+
+# Django Admin
+
+1. Django的后台管理工具
+2. 读取定义的模型元数据，提供强大的管理使用页面（Django新增内容操作太繁琐了）
+
+## 如何使用
+
+1. 创建管理员用户 `python manage.py createsuperuser`
+
+2. 登录页面进行管理 `python manage.py runserver` 进入页面输入密码
+
+   ![image-20250904115449274](D:/github/ByteDance_Backend/项目/Django医疗外包/管理页面.png)
+
+3. 之后再App中的admin里面设置注册一个Article对象
+
+   ```python
+   from django.contrib import admin
+   # Register your models here.
+   from .models import Article
+   admin.site.register(Article)
+   ```
+
+   ![image-20250905090800886](D:/github/ByteDance_Backend/项目/Django医疗外包/注册对象.png)
+
+4. 在APP中的model.py里面重写方法，使得Admin控制台的列表中体现的是文章title
+
+   ```python
+   # 使得Article.objects.get(article_id=1)返回的是文章名称
+       def __str__(self):
+           return self.title
+   ```
+
+# 创建一个简单的项目
+
+## 如何实现数据读取到转发至前端
+
+1. 读取数据
+
+   ```py
+   def article_content(request):
+       article = Article.objects.all()[0]
+       title = article.title
+       brif_content = article.brief_content
+       content = article.content
+       article_id = article.article_id
+       publish_date = article.publish_date
+       return_str = ('title: %s, brief_content: %s, '
+                     'content: %s,article_id: %s ,publish_date: %s') %(title,brif_content,content,article_id,publish_date)
+      
+   ```
+
+2. 配置APP层面的路由(负责解析到具体的视图函数)
+
+   ```python
+   path('content',my_app.views.article_content)
+   ```
+
+3. 配置项目层面的路由(负责解析到具体APP)
+
+   ```py
+   path('my_app/', include('my_app.urls'))
+   ```
+
+## 使用Bootstrap实现静态博客页面（前端内容）
+
+### 页面布局设计
+
+官方文档：https://www.bootcss.com/
+
+根据官方文档中的
+
+### 了解使用Bootstrap栅格系统
+
+栅格系统把页面均分为12等份（横向宽度），方便更加细化的设计，引入下面这部分代码进入html页面，并且在需要设计的页面里面加上具体的布局就行了
+
+```html
+<!-- 最新版本的 Bootstrap 核心 CSS 文件 -->
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+
+<!-- 可选的 Bootstrap 主题文件（一般不用引入） -->
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap-theme.min.css" integrity="sha384-6pzBo3FDv/PJ8r2KRkGHifhEocL+1X2rVCTTkUfGk7/0pbek5mMa1upzvWbrUbOZ" crossorigin="anonymous">
+
+<!-- 最新的 Bootstrap 核心 JavaScript 文件 -->
+<script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
+```
+
+```html
+<div class="col-md-9" role="main">
+</div>
+    
+<div class="col-md-3" role="complementary">
+</div>
+```
+
+## Django的模板系统
+
+之后会有一个解耦过后的框架学习
+
+### 模板系统简介
+
+由于视图文件(view.py)不适合编码html，如果每次修改页面都要去修改视图文件的python代码返回值，解耦不彻底就太麻烦了。因此我们需要引入python的模板系统
+
+### 基本语法
+
+- 变量标签：`{{变量}}`
+
+  `<html><body>{{now}}</body><.html>`
+
+- for循环标签：`{%for x in list%},{% endfor %}`
+
+  ```html
+  <ul>
+      {% for item in list %}
+      	<li>{{ item }}</li>
+      {% endfor %}
+  </u1>
+  ```
+
+- if-else分支标签：`{% if %},{% else %},{% endif %}`
+
+  ```
+  {% if true %}
+  	<p> it is a truepart.</p>
+  {% else %}
+  	<p> it is a false part.</p>
+  {% endif %}
+  ```
+
+## 综合渲染
+
+结合模板系统和页面语法，渲染出动态的博客页面，也就说明了这个框架属于是一个嵌套的前后端体系。使用变量和返回的方式对页面进行渲染。因为我们的项目是前后端分离架构，因此就不深入解析了，直接进入DRF框架的学习。
+
