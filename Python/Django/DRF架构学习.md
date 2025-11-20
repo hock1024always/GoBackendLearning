@@ -375,39 +375,499 @@ RESTful API最好做到Hypermedia，即返回结果中提供链接，连向其�
 
 # 序列化
 
+这部分与数据库关系很密切，下面是我使用数据库时候在设置里面设置的全局DRF字段，这部分在上面的配置部分有详细的说明
+
+```python
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# DRF的全局配置
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASS': "rest_framework.pagination.PageNumberPagination",
+    'PAGE_SIZE': 50,  # 每页显示的条数
+    'DAYTIME_FORMAT': '%Y-%m-%d %H:%M:%S',# 时间格式
+    # 渲染器配置 下面这个是默认的配置
+    'DEFAULT_RENDERER_CLASSES':[
+       'rest_framework.renderers.JSONRenderer', # json格式
+       'rest_framework.renderers.BrowsableAPIRenderer', # 浏览器可视化API
+    ],
+    # 数据解析设置 解析request.data数据
+    'DEFAULT_PARSER_CLASSES': [
+       'rest_framework.parsers.JSONParser', # json格式
+       'rest_framework.parsers.FormParser', # form表单格式
+       'rest_framework.parsers.MultiPartParser', # 文件上传格式
+    ],
+    #权限设置
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    # 认证设置
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+}
+```
+
 ## 开发模型类
 
+模型类说白了就是一个数据库的表，方便后端程序与数据库的数据交互
 
+```py
+from django.db import models
+
+# Create your models here.
+from django.db import models
+from django.conf import settings
+
+class Counselor(models.Model):
+    name = models.CharField(max_length=255, unique=True, help_text="课程名称", verbose_name="名称")
+    introduction = models.TextField(help_text="课程简介", verbose_name="简介")
+    # 使用外键导入老师
+    teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, help_text="授课老师", verbose_name="老师")
+    price = models.DecimalField(max_digits=6, decimal_places=2, help_text="课程价格", verbose_name="价格")
+    created_at = models.DateTimeField(auto_now_add=True, help_text="创建时间", verbose_name="创建时间")
+    updated_at = models.DateTimeField(auto_now=True, help_text="更新时间", verbose_name="更新时间")
+
+    class Meta:
+        verbose_name = "课程"
+        verbose_name_plural = verbose_name
+        ordering = ["price",]
+
+    def __str__(self):
+        return self.name
+```
 
 ## 什么是序列化
 
+序列化就是将数据库中的字段转化成json的形式发送给前端
 
+```python
+# 实现序列化
+from django import forms
+from rest_framework import serializers
 
+from Counselor.models import Counselor
 
+from django.contrib.auth.models import User
 
+class CounselorForm(forms.ModelForm):
+    class Meta:
+        model = Counselor
+        fields = ('name','introduction', 'teacher', 'price')
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = '__all__'
 
+# class CounselorSerializer(serializers.ModelSerializer):
+#     teacher = serializers.ReadOnlyField(source='teacher.username')#外键字段 只读
+#     class Meta:
+#         model = Counselor
+#         fields = '__all__'
+#         depth = 2 # 递归深度 1 表示只显示当前对象关联的外键对象
 
+class CounselorSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Counselor
+        # url是默认值 可在settings。py中设置URL_FIELD_NAME 使全局生效
+        fields = ('id','url','name','introduction','teacher','price')
+```
 
 # 视图和路由
 
+## Django原生开发
 
+django原生的开发提供了两种方式处理路由
 
+```python
+#app/views.py
+from django.shortcuts import render
 
+# Create your views here.
 
+import json
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 
+from django.views import View
+from django.utils.decorators import method_decorator
 
-# 权限控制
+course_dict = {
+        'name': '课程名称',
+        'introduction': '课程简介',
+        'price': 0.11,
+    }
+# 使用Django FBV方式编写API接口
+@csrf_exempt
+def course_list(request):
 
+    if request.method == 'GET':
+        # return HttpResponse(json.dumps(course_dict),content_type='application/json')
+        return JsonResponse(course_dict)
+    if request.method == 'POST':
+        course = json.loads(request.body.decode('utf-8'))
+        # return JsonResponse({'course', safe=False})
+        return HttpResponse(json.dumps({'course': course}), content_type='application/json')
 
+#  使用django CBV方式编写API接口
+@method_decorator(csrf_exempt, name='dispatch')
+class CourseView(View):
 
-## DRF认证方式介绍
+    def get(self, request):
+         return JsonResponse(course_dict)
 
+    @csrf_exempt
+    def post(self, request):
+         course = json.loads(request.body.decode('utf-8'))
+         return HttpResponse(json.dumps({'course': course}), content_type='application/json')
+```
 
+## 函数视图开发`Function Based View`
+
+### GET&POST方法
+
+#### 使用`ModelSerializer`
+
+```python
+class CounselorSerializer(serializers.ModelSerializer):
+    teacher = serializers.ReadOnlyField(source='teacher.username')#外键字段 只读
+    class Meta:
+        model = Counselor
+        fields = '__all__'
+        depth = 2 # 递归深度 1 表示只显示当前对象关联的外键对象
+```
+
+```python
+@api_view(['GET',"POST"])
+def counselor_list(request):
+    '获取所有课程信息或者新增一个课程'
+    if request.method == 'GET':
+        # 序列化多个对象
+        s = CounselorSerializer(instance=Counselor.objects.all(), many=True)# many=True 表示序列化多个对象
+        return Response(data = s.data, status = status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        # 反序列化一个对象
+        s = CounselorSerializer(data=request.data)# 部分更新用partial=True属性
+        if s.is_valid():# 是否校验成功
+            s.save(teacher=request.user)# 将只读字段直接赋值
+            return Response(data = s.data, status = status.HTTP_201_CREATED)
+        return Response(data = s.errors, status = status.HTTP_400_BAD_REQUEST)
+```
+
+尝试get和post两种方法吧
+
+#### 使用`HyperlinkedModelSerializer`
+
+值得注意的是，`HyperlinkedModelSerializer`方法会自动索引同名的路由，因此要保证
+
+1. 这个视图函数的名称与序列化的名称主体一致
+2. 要在序列化对象中加入`context={'request': request}`
+
+因为这个序列化类高度是的集成的
+
+```python
+class CounselorSerializer(serializers.HyperlinkedModelSerializer):
+    teacher = serializers.ReadOnlyField(source='teacher.username')
+
+    class Meta:
+        model = Counselor
+        # url是默认值 可在settings。py中设置URL_FIELD_NAME 使全局生效
+        fields = ('id','url','name','introduction','teacher','price')
+```
+
+```python
+@api_view(['GET',"POST"])
+def counselor_list(request):
+    '获取所有课程信息或者新增一个课程'
+    if request.method == 'GET':
+        # 序列化多个对象
+        s = CounselorSerializer(instance=Counselor.objects.all(), many=True,context={'request': request})
+        return Response(data = s.data, status = status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        # 反序列化一个对象
+        s = CounselorSerializer(data=request.data)# 部分更新用partial=True属性
+        if s.is_valid():# 是否校验成功
+            s.save(teacher=request.user)# 将只读字段直接赋值
+            return Response(data = s.data, status = status.HTTP_201_CREATED)
+        return Response(data = s.errors, status = status.HTTP_400_BAD_REQUEST)
+```
+
+这种方案适合使用视图集编程
+
+### PUT&DELETE方法
+
+```py
+path('fbv/detail/<int:pk>/', views.counselor_detail, name='counselor-detail'),
+```
+
+```python
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+def counselor_detail(request, pk):
+    '获取、更新或删除单个课程'
+    try:
+        course = Counselor.objects.get(pk=pk)
+    except Counselor.DoesNotExist:
+        return Response(data={"message": "课程不存在"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        s = CounselorSerializer(instance=course)
+        return Response(data=s.data,status=status.HTTP_200_OK)
+
+    elif request.method in ['PUT', 'PATCH']:
+        partial = (request.method == 'PATCH')  # PATCH 用于部分更新
+        # instance用于确定是哪个对象  data用于更新数据
+        s = CounselorSerializer(instance=course, data=request.data, partial=partial, context={'request': request})
+        if s.is_valid():
+            s.save()# PUT PATCH 是更新操作，不必要求教师信息必须填写
+            return Response(data=s.data)
+        return Response(data=s.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        course.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+```
+
+## 类视图编程`Classed Based View`
+
+要导入`from rest_framework.views import APIView`
+
+### 列表方法
+
+```python
+class CounselorList(APIView):
+    def get(self, request):
+        queryset = Counselor.objects.all()
+        s = CounselorSerializer(instance=queryset, many=True)
+        return Response(data=s.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        s = CounselorSerializer(data=request.data)
+        if s.is_valid():
+            s.save(teacher=self.request.user)
+            print(type(request.data),type(s.data))
+            return Response(data=s.data, status=status.HTTP_201_CREATED)
+        return Response(data=s.errors, status=status.HTTP_400_BAD_REQUEST)
+```
+
+### 详情页开发
+
+注意单个访问的时候要在最后加上`/`
+
+```python
+class CourseDetail(APIView):
+    @staticmethod # 静态方法
+    def get_object(pk):
+        try:
+            return Counselor.objects.get(pk=pk)
+        except Counselor.DoesNotExist:
+            return
+
+    def get(self, request, pk):
+        """
+        :param request:
+        :param pk:
+        :return:
+        """
+        obj = self.get_object(pk=pk)
+        if not obj:
+            return Response(data={"msg": "没有此课程信息"}, status=status.HTTP_404_NOT_FOUND)
+        s = CounselorSerializer(instance=obj)
+        return Response(s.data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk):
+        """
+        :param request:
+        :param pk:
+        :return:
+        """
+        obj = self.get_object(pk=pk)
+        if not obj:
+            return Response(data={"msg": "没有此课程信息"}, status=status.HTTP_404_NOT_FOUND)
+        s = CounselorSerializer(instance=obj, data=request.data)
+        if s.is_valid():
+            s.save()
+            return Response(data=s.data, status=status.HTTP_200_OK)
+        return Response(data=s.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        """
+        :param request:
+        :param pk:
+        :return:
+        """
+        obj = self.get_object(pk=pk)
+        if not obj:
+            return Response(data={"msg": "没有此课程信息"}, status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+```
+
+## DRF通用类视图`Generic Classed Based View`
+
+需要导入`from rest_framework import generics`
+
+```python
+class GCourseList(generics.ListCreateAPIView):
+
+    """
+    GCourseList类是一个基于Django REST framework的视图类，继承自ListCreateAPIView。
+    这个视图类提供了列出所有Counselor对象和创建新Counselor对象的功能。
+    """
+    queryset = Counselor.objects.all()  # 查询所有Counselor对象作为默认的查询集
+    serializer_class = CounselorSerializer  # 指定使用CounselorSerializer进行序列化
+
+    def perform_create(self, serializer):
+
+        """
+        重写perform_create方法，在创建新的Counselor对象时自动设置teacher字段为当前请求用户。
+        这样可以确保新创建的Counselor对象总是与当前登录的用户关联。
+        """
+        serializer.save(teacher=self.request.user)  # 保存序列化器数据，并将当前请求用户设置为teacher
+
+class GCourseDetail(generics.RetrieveUpdateDestroyAPIView):
+
+    """
+    GCourseDetail类是一个基于Django REST framework的通用视图类，用于处理单个辅导员详情的获取、更新和删除操作。
+    它继承自RetrieveUpdateDestroyAPIView，提供了Retrieve(获取)、Update(更新)和Destroy(删除)的功能。
+
+    继承关系:
+    - generics.RetrieveUpdateDestroyAPIView: 提供了对单个对象进行检索、更新和删除的API视图
+
+    属性:
+    - queryset: 指定该视图操作的数据集为所有Counselor对象
+    - serializer_class: 指定用于序列化和反序列化Counselor对象的序列化器类为CounselorSerializer
+    """
+    queryset = Counselor.objects.all()  # 查询集，包含所有Counselor对象，用于视图操作的数据源
+    serializer_class = CounselorSerializer  # 序列化器类，用于处理Counselor对象的序列化和反序列化
+
+```
+
+## 使用视图集编写
+
+`Django-Viewsets`是这个框架编写接口的最佳实践，尤其要注意URL的写法
+
+### 视图函数编码
+
+```py
+class CourseViewSet(viewsets.ModelViewSet):
+    queryset = Counselor.objects.all()
+    serializer_class = CounselorSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(teacher=self.request.user)
+```
+
+### URL写法
+
+#### 键值对写法
+
+```py
+path("viewsets/", views.CourseViewSet.as_view(
+        {"get": "list", "post": "create"}
+    ), name="viewsets-list"),
+    path("viewsets/<int:pk>/", views.CourseViewSet.as_view(
+        {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
+    ), name="viewsets-detail"),
+```
+
+1. 路由中的key，指的是视图集的http协议中的方法，我们一般使用GET PUT和DELETE
+2. value指的是`viewsets.py->mixins.py`中的方法
+
+#### 简化路由写法
+
+引入routers方法
+
+```py
+from rest_framework.routers import DefaultRouter
+router.register(prefix="viewsets", viewset=views.CourseViewSet)
+```
+
+```python
+urlpatterns = [
+	path("", include(router.urls)),
+]
+```
+
+# 认证&权限控制
+
+权限控制是DRF中的常用鉴权方式，我们一般使用信号机制来生成token
+
+## DRF认证权限基础介绍
+
+全局的设置都是在`settings.py`文件的`REST_FRAMEWORK`元组里面
+
+- 认证：对用户身份的认证（是在所有代码逻辑执行之前完成的，优先级最高）
+
+  ```python
+  'DEFAULT_AUTHENTICATION_CLASSES': [
+      	# 验证按照顺序执行下面三个
+          'rest_framework.authentication.SessionAuthentication',
+          'rest_framework.authentication.BasicAuthentication',
+          'rest_framework.authentication.TokenAuthentication',
+      ],
+  ```
+
+- 权限：已经认证过的用户可以访问哪些接口
+
+  ```python
+  'DEFAULT_PERMISSION_CLASSES': [
+          'rest_framework.permissions.IsAuthenticated',
+   ],
+  ```
+
+这些功能依赖两个核心数据结构：
+
+1. `request.user`:
+2. `request.auth`:
 
 ## Django信号机制自动生成Token
 
+**在views.py里面引入**
 
+```python
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token
+```
+
+**生成器函数**
+
+```python
+# 自动触发的信号接收器
+@receiver(post_save, sender=User)
+def create_auth_token(sender, instance=None, created=False, **kwargs):
+    # 创建用户时自动创建token
+    if created:
+        Token.objects.create(user=instance)
+```
+
+获取Token的接口框架已经写好了，我们只需要在总的项目`url`里面导入就行
+
+**在函数中使用**
+
+函数式编程中使用装饰器的方式来做，放在方法的下面；在`viewsets`文件里面是使用类 
+
+```python
+from rest_framework.decorators import api_view, authentication_classes
+from rest_framework.authentication import BasicAuthentication, SessionAuthentication ,TokenAuthentication
+
+class BaseViewSet(viewsets.ModelViewSet):
+    
+    authentication_classes = (TokenAuthentication, BasicAuthentication, SessionAuthentication)
+    def get_paginated_response(self, queryset, serializer_class, page, page_size):
+        paginator = Paginator(queryset, page_size)
+        page_obj = paginator.get_page(page)
+        serializer = serializer_class(page_obj, many=True)
+        return Response({
+            'total': paginator.count,
+            'data': serializer.data
+        })
+```
 
 ## DRF权限控制
 
